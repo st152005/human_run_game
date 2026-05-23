@@ -7,10 +7,10 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#111;display:flex;justify-content:center;min-height:100vh;align-items:flex-start;padding-top:2rem}
-  #gw{font-family:'Press Start 2P',monospace;background:#111;display:flex;flex-direction:column;align-items:center;padding:2rem 1rem;user-select:none}
-  #sb{display:flex;justify-content:space-between;width:600px;max-width:100%;font-size:11px;color:#eee;margin-bottom:8px}
-  #cv{border:2px solid #fff;width:600px;max-width:100%;display:block;image-rendering:pixelated}
+  body{background:#111;display:flex;justify-content:center;align-items:center;min-height:100vh;overflow:hidden}
+  #gw{font-family:'Press Start 2P',monospace;display:flex;flex-direction:column;align-items:center;width:100%;padding:0 8px;user-select:none}
+  #sb{display:flex;justify-content:space-between;width:100%;max-width:600px;color:#eee;margin-bottom:6px}
+  #cv{border:2px solid #fff;width:100%;max-width:600px;display:block;image-rendering:pixelated}
 </style>
 </head>
 <body>
@@ -22,8 +22,18 @@
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const W=600,H=150,GND=108;
 let state='idle',score=0,hi=0,frame=0,speed=4,spawnT=0,spawnI=80;
-let human,cars,clouds,roadLines;
-
+let human,cars,clouds,roadLines,scale=1;
+ 
+function resize(){
+  const maxW=Math.min(window.innerWidth-16,600);
+  scale=maxW/600;
+  cv.style.width=maxW+'px';
+  cv.style.height=(150*scale)+'px';
+  const fs=Math.max(7,Math.round(11*scale));
+  document.getElementById('sb').style.fontSize=fs+'px';
+  document.getElementById('sb').style.maxWidth=maxW+'px';
+}
+ 
 function init(){
   human={x:55,y:GND,w:14,h:28,vy:0,jumping:false,dead:false,frame:0,ft:0};
   cars=[];
@@ -31,22 +41,20 @@ function init(){
   roadLines=[{x:100},{x:220},{x:340},{x:460},{x:580}];
   score=0;frame=0;speed=4;spawnT=0;spawnI=80;
 }
-
+ 
 const CAR_SHADES=['#fff','#ccc','#eee','#aaa','#ddd','#bbb'];
-
+ 
 function drawCloud(c){
   ctx.fillStyle='#333';
   ctx.fillRect(c.x,c.y,c.w,10);
   ctx.fillRect(c.x+10,c.y-7,c.w-18,8);
   ctx.fillRect(c.x+5,c.y-4,12,5);
 }
-
+ 
 function drawHuman(h){
   if(h.dead){
-    ctx.fillStyle='#fff';
-    ctx.fillRect(h.x,h.y+6,h.w,h.h-6);
-    ctx.fillStyle='#111';
-    ctx.fillRect(h.x+3,h.y+8,8,8);
+    ctx.fillStyle='#fff';ctx.fillRect(h.x,h.y+6,h.w,h.h-6);
+    ctx.fillStyle='#111';ctx.fillRect(h.x+3,h.y+8,8,8);
     return;
   }
   const lf=h.frame%2===0;
@@ -64,7 +72,7 @@ function drawHuman(h){
   ctx.fillRect(h.x+2,h.y+26,4,lf?3:2);
   ctx.fillRect(h.x+8,h.y+26,4,lf?2:3);
 }
-
+ 
 function drawCar(o){
   ctx.fillStyle=o.shade;
   ctx.fillRect(o.x,o.y+8,o.w,o.h-8);
@@ -76,19 +84,19 @@ function drawCar(o){
   ctx.fillStyle='#fff';ctx.fillRect(o.x,o.y+o.h-6,4,4);
   ctx.fillStyle='#888';ctx.fillRect(o.x+o.w-4,o.y+o.h-6,4,4);
 }
-
+ 
 function spawnCar(){
   const h=22+Math.floor(Math.random()*8);
   const w=28+Math.floor(Math.random()*14);
   const shade=CAR_SHADES[Math.floor(Math.random()*CAR_SHADES.length)];
   cars.push({x:W,y:GND+32-h,w,h,shade});
 }
-
+ 
 function jump(){
   if(state!=='playing'){init();state='playing';}
   if(!human.jumping){human.vy=-11;human.jumping=true;}
 }
-
+ 
 function update(){
   if(state!=='playing')return;
   frame++;score++;
@@ -109,7 +117,7 @@ function update(){
     return;
   }
 }
-
+ 
 function draw(){
   ctx.fillStyle='#111';ctx.fillRect(0,0,W,H);
   ctx.fillStyle='#1a1a1a';ctx.fillRect(0,GND-8,W,10);
@@ -133,8 +141,10 @@ function draw(){
   }
   document.getElementById('sv').textContent=score;
 }
-
+ 
 function loop(){update();draw();requestAnimationFrame(loop);}
+resize();
+window.addEventListener('resize',resize);
 init();loop();
 document.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();jump();}});
 cv.addEventListener('click',jump);
