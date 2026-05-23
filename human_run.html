@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Human Run</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#111;display:flex;justify-content:center;min-height:100vh;align-items:flex-start;padding-top:2rem}
+  #gw{font-family:'Press Start 2P',monospace;background:#111;display:flex;flex-direction:column;align-items:center;padding:2rem 1rem;user-select:none}
+  #sb{display:flex;justify-content:space-between;width:600px;max-width:100%;font-size:11px;color:#eee;margin-bottom:8px}
+  #cv{border:2px solid #fff;width:600px;max-width:100%;display:block;image-rendering:pixelated}
+</style>
+</head>
+<body>
+<div id="gw">
+  <div id="sb"><span>SCORE: <span id="sv">0</span></span><span>HI: <span id="hv">0</span></span></div>
+  <canvas id="cv" width="600" height="150"></canvas>
+</div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const W=600,H=150,GND=108;
+let state='idle',score=0,hi=0,frame=0,speed=4,spawnT=0,spawnI=80;
+let human,cars,clouds,roadLines;
+
+function init(){
+  human={x:55,y:GND,w:14,h:28,vy:0,jumping:false,dead:false,frame:0,ft:0};
+  cars=[];
+  clouds=[{x:200,y:18,w:55,spd:0.5},{x:450,y:12,w:70,spd:0.4},{x:80,y:25,w:45,spd:0.6}];
+  roadLines=[{x:100},{x:220},{x:340},{x:460},{x:580}];
+  score=0;frame=0;speed=4;spawnT=0;spawnI=80;
+}
+
+const CAR_SHADES=['#fff','#ccc','#eee','#aaa','#ddd','#bbb'];
+
+function drawCloud(c){
+  ctx.fillStyle='#333';
+  ctx.fillRect(c.x,c.y,c.w,10);
+  ctx.fillRect(c.x+10,c.y-7,c.w-18,8);
+  ctx.fillRect(c.x+5,c.y-4,12,5);
+}
+
+function drawHuman(h){
+  if(h.dead){
+    ctx.fillStyle='#fff';
+    ctx.fillRect(h.x,h.y+6,h.w,h.h-6);
+    ctx.fillStyle='#111';
+    ctx.fillRect(h.x+3,h.y+8,8,8);
+    return;
+  }
+  const lf=h.frame%2===0;
+  ctx.fillStyle='#fff';ctx.fillRect(h.x+3,h.y,8,8);
+  ctx.fillStyle='#111';
+  ctx.fillRect(h.x+3,h.y,8,3);
+  ctx.fillRect(h.x+5,h.y+3,2,2);ctx.fillRect(h.x+9,h.y+3,2,2);
+  ctx.fillStyle='#fff';ctx.fillRect(h.x+2,h.y+8,10,10);
+  ctx.fillStyle='#555';ctx.fillRect(h.x+6,h.y+9,2,8);
+  ctx.fillStyle='#ddd';
+  ctx.fillRect(h.x,h.y+8,3,7);ctx.fillRect(h.x+11,h.y+8,3,7);
+  ctx.fillStyle='#333';
+  ctx.fillRect(h.x+2,h.y+18,4,8);ctx.fillRect(h.x+8,h.y+18,4,8);
+  ctx.fillStyle='#111';
+  ctx.fillRect(h.x+2,h.y+26,4,lf?3:2);
+  ctx.fillRect(h.x+8,h.y+26,4,lf?2:3);
+}
+
+function drawCar(o){
+  ctx.fillStyle=o.shade;
+  ctx.fillRect(o.x,o.y+8,o.w,o.h-8);
+  ctx.fillRect(o.x+6,o.y,o.w-12,10);
+  ctx.fillStyle='#111';
+  ctx.fillRect(o.x+8,o.y+2,o.w-18,7);
+  ctx.fillRect(o.x,o.y+o.h,o.w,2);
+  ctx.fillRect(o.x+3,o.y+o.h-2,6,6);ctx.fillRect(o.x+o.w-9,o.y+o.h-2,6,6);
+  ctx.fillStyle='#fff';ctx.fillRect(o.x,o.y+o.h-6,4,4);
+  ctx.fillStyle='#888';ctx.fillRect(o.x+o.w-4,o.y+o.h-6,4,4);
+}
+
+function spawnCar(){
+  const h=22+Math.floor(Math.random()*8);
+  const w=28+Math.floor(Math.random()*14);
+  const shade=CAR_SHADES[Math.floor(Math.random()*CAR_SHADES.length)];
+  cars.push({x:W,y:GND+32-h,w,h,shade});
+}
+
+function jump(){
+  if(state!=='playing'){init();state='playing';}
+  if(!human.jumping){human.vy=-11;human.jumping=true;}
+}
+
+function update(){
+  if(state!=='playing')return;
+  frame++;score++;
+  if(score%400===0)speed=Math.min(speed+0.4,13);
+  if(score%120===0)spawnI=Math.max(38,spawnI-2);
+  human.vy+=0.55;human.y+=human.vy;
+  if(human.y>=GND){human.y=GND;human.vy=0;human.jumping=false;}
+  human.ft++;if(human.ft>7){human.frame++;human.ft=0;}
+  spawnT++;if(spawnT>=spawnI){spawnCar();spawnT=0;}
+  cars=cars.filter(o=>{o.x-=speed;return o.x>-60;});
+  roadLines.forEach(r=>{r.x-=speed;if(r.x<-20)r.x=W+20;});
+  clouds.forEach(c=>{c.x-=c.spd;if(c.x<-80)c.x=W+50;});
+  for(const o of cars){
+    if(human.x+human.w-3<o.x||human.x+3>o.x+o.w)continue;
+    if(human.y+human.h<o.y||human.y+4>o.y+o.h)continue;
+    human.dead=true;state='dead';
+    if(score>hi){hi=score;document.getElementById('hv').textContent=hi;}
+    return;
+  }
+}
+
+function draw(){
+  ctx.fillStyle='#111';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#1a1a1a';ctx.fillRect(0,GND-8,W,10);
+  ctx.fillStyle='#0d0d0d';ctx.fillRect(0,GND,W,H-GND);
+  roadLines.forEach(r=>{
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    ctx.fillRect(r.x,GND+14,22,3);
+  });
+  clouds.forEach(c=>drawCloud(c));
+  cars.forEach(o=>drawCar(o));
+  drawHuman(human);
+  if(state!=='playing'){
+    ctx.fillStyle='rgba(0,0,0,0.75)';ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='#fff';ctx.lineWidth=2;
+    ctx.strokeRect(12,12,W-24,H-24);
+    ctx.fillStyle='#fff';ctx.font='13px "Press Start 2P"';ctx.textAlign='center';
+    ctx.fillText(state==='dead'?'GAME OVER':'HUMAN RUN',W/2,52);
+    ctx.font='8px "Press Start 2P"';ctx.fillStyle='#ccc';
+    if(state==='dead')ctx.fillText('SCORE: '+score,W/2,72);
+    ctx.fillText('PRESS SPACE / TAP TO PLAY',W/2,95);
+  }
+  document.getElementById('sv').textContent=score;
+}
+
+function loop(){update();draw();requestAnimationFrame(loop);}
+init();loop();
+document.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();jump();}});
+cv.addEventListener('click',jump);
+cv.addEventListener('touchstart',e=>{e.preventDefault();jump();},{passive:false});
+</script>
+</body>
+</html>
